@@ -7,5 +7,7 @@ router.post('/',BookingController.createBooking);
 
 router.post('/payment', BookingController.makePayment);
 
+router.post('/cancel', BookingController.cancelBooking);
+
 module.exports = 
     router

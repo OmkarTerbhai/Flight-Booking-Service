@@ -65,7 +65,46 @@ async function makePayment(data) {
     }
 }
 
+    async function cancelBooking(data) {
+        const transaction = await db.sequelize.transaction();
+
+        try {
+            const bookingDetais = await bookingRepository.getBooking(data.bookingId, transaction);
+            if(bookingDetais.status == "cancelled") {
+                return true;
+            }
+
+            const response = await axios.patch(`${ServerConfig.HOST}/api/v1/flight/${bookingDetais.flightId}/seats`, {
+                seats: data.noOfSeats,
+                desc: 0
+            });
+            await bookingRepository.updateBooking(data.bookingId, {
+                status: "cancelled"
+            }, transaction);
+            await transaction.commit();
+        }
+        catch(error) {
+            console.log(error);
+            await transaction.rollback();
+            throw error;
+        }
+    }
+
+async function cancelBookingCron() {
+    try {
+        const currentTime = new Date(Date.now() - 1000 * 300);
+        const response = await bookingRepository.cancelOldBookings(currentTime);
+        console.log("Rec: ", response);
+    }
+    catch(error) {
+        console.log(error);
+    }
+}
+
+
 module.exports = {
     createBooking,
-    makePayment
+    makePayment,
+    cancelBooking,
+    cancelBookingCron
 }
