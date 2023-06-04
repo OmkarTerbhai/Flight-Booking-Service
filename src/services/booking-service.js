@@ -1,5 +1,5 @@
 const axios = require('axios');
-const {ServerConfig} = require('../config');
+const {ServerConfig, QueueConfig} = require('../config');
 const db = require('../models');
 const { BookingRepository } = require('../repositories');
 const AppError = require('../utils/errors/app-error');
@@ -37,15 +37,15 @@ async function makePayment(data) {
     const transaction = await db.sequelize.transaction();
     try {
         const bookingDetais = await bookingRepository.getBooking(data.bookingId, transaction);
-        if(bookingDetais.status == "cancelled") {
-            throw new AppError("Booking is cancelled", StatusCodes.BAD_REQUEST);
-        }
+        // if(bookingDetais.status == "cancelled") {
+        //     throw new AppError("Booking is cancelled", StatusCodes.BAD_REQUEST);
+        // }
         console.log("Det booking ", bookingDetais)
         const bookingDate = new Date(bookingDetais.createdAt);
         const currentTime = new Date();
-        if(currentTime - bookingDate > 300000) {
-            throw new AppError("Booking has expired", StatusCodes.BAD_REQUEST);
-        }
+        // if(currentTime - bookingDate > 300000) {
+        //     throw new AppError("Booking has expired", StatusCodes.BAD_REQUEST);
+        // }
         if(bookingDetais.totalCost != data.totalCost) {
             throw new AppError("The amount of the payment doesn't match", StatusCodes.BAD_REQUEST);
         }
@@ -56,7 +56,11 @@ async function makePayment(data) {
         const response = await bookingRepository.updateBooking(bookingDetais.id, {
             status: "Booked"
         }, transaction);
-
+        QueueConfig.sendData({
+            recipientEmail: 'terbhaisangeeta@gmail.com',
+            subject: "Flight Booked",
+            text: `Booking successfully done for ${data.bookingId}`
+        });
         await transaction.commit();
     }
     catch(error) {
